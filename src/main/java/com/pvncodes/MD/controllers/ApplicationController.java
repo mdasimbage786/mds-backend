@@ -11,7 +11,7 @@ import java.util.List; // ✅ Required to return list of applications
 
 @RestController
 @RequestMapping("/api/applications")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "https://preeminent-mochi-42cfb6.netlify.app")
 public class ApplicationController {
 
     @Autowired

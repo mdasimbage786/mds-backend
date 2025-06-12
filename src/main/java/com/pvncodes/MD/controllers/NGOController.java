@@ -11,7 +11,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/ngos")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "https://preeminent-mochi-42cfb6.netlify.app")
 public class NGOController {
 
     @Autowired

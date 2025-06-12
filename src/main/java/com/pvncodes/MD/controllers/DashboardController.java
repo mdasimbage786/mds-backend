@@ -13,7 +13,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/dashboard")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "https://preeminent-mochi-42cfb6.netlify.app")
 public class DashboardController {
 
     @Autowired

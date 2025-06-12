@@ -12,6 +12,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/medicines")
+@CrossOrigin(origins = "https://preeminent-mochi-42cfb6.netlify.app")
 public class MedicineController {
     @Autowired
     private NewMedicineService newMedicineService;
