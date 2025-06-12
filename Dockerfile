@@ -1,11 +1,16 @@
-# Use official OpenJDK image
-FROM openjdk:17-jdk-slim
+# Use Maven image to build the app
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 
-# Create a directory for the app
+WORKDIR /app
+COPY . .
+RUN mvn clean package -DskipTests
+
+# Use OpenJDK for the runtime
+FROM openjdk:17-jdk-slim
 WORKDIR /app
 
-# Copy the jar file into the image
-COPY target/MD-0.0.1-SNAPSHOT.jar app.jar
+# Copy the jar from the previous build stage
+COPY --from=build /app/target/MD-0.0.1-SNAPSHOT.jar app.jar
 
-# Run the jar file
+# Run the jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
