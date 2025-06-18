@@ -38,13 +38,64 @@ public class NGOController {
 
         String token = "ngo-token-" + dbNgo.getId();
 
-        // ✅ Include name and address in the response
-        Map<String, String> response = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
         response.put("token", token);
+        response.put("ngoId", dbNgo.getId());
         response.put("name", dbNgo.getName());
+        response.put("email", dbNgo.getEmail());
         response.put("address", dbNgo.getAddress());
+        response.put("contactNumber", dbNgo.getContactNumber());
 
         return ResponseEntity.ok(response);
+    }
+
+    // New endpoint for getting NGO profile
+    @GetMapping("/profile")
+    public ResponseEntity<NGO> getNGOProfile(@RequestHeader("Authorization") String authHeader) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            String ngoIdStr = token.replace("ngo-token-", "");
+            Long ngoId = Long.parseLong(ngoIdStr);
+
+            Optional<NGO> ngo = ngoService.findById(ngoId);
+            if (ngo.isPresent()) {
+                NGO ngoResponse = ngo.get();
+                ngoResponse.setPassword(null); // Don't send password in response
+                return new ResponseEntity<>(ngoResponse, HttpStatus.OK);
+            }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    // New endpoint for updating NGO profile
+    @PutMapping("/profile")
+    public ResponseEntity<NGO> updateNGOProfile(@RequestHeader("Authorization") String authHeader, @RequestBody NGO updatedNGO) {
+        try {
+            String token = authHeader.replace("Bearer ", "");
+            String ngoIdStr = token.replace("ngo-token-", "");
+            Long ngoId = Long.parseLong(ngoIdStr);
+
+            Optional<NGO> existingNGO = ngoService.findById(ngoId);
+            if (existingNGO.isPresent()) {
+                NGO ngo = existingNGO.get();
+
+                // Update only non-null fields
+                if (updatedNGO.getName() != null) ngo.setName(updatedNGO.getName());
+                if (updatedNGO.getEmail() != null) ngo.setEmail(updatedNGO.getEmail());
+                if (updatedNGO.getContactNumber() != null) ngo.setContactNumber(updatedNGO.getContactNumber());
+                if (updatedNGO.getAddress() != null) ngo.setAddress(updatedNGO.getAddress());
+                if (updatedNGO.getNgoId() != null) ngo.setNgoId(updatedNGO.getNgoId());
+
+                NGO savedNGO = ngoService.saveNGO(ngo);
+                savedNGO.setPassword(null); // Don't send password in response
+                return new ResponseEntity<>(savedNGO, HttpStatus.OK);
+            }
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
     }
 
     @GetMapping
