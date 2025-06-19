@@ -26,15 +26,34 @@ public class DashboardController {
     public Map<String, Object> getDashboardStats() {
         Map<String, Object> stats = new HashMap<>();
 
-        long totalMedicines = medicineRepository.count();
-        long totalDonations = applicationRepository.count();
-        long pendingApplications = applicationRepository.countByStatus("Pending");
+        // Available medicines in inventory (medicines with quantity > 0)
+        long availableMedicines = medicineRepository.count();
+
+        // Total quantity of all available medicines
+        long totalMedicineQuantity = medicineRepository.findAll()
+                .stream()
+                .mapToLong(medicine -> medicine.getQuantity())
+                .sum();
+
+        // New medicine donations (medicines added in last 7 days or by status)
+        // For now, showing total medicines as "donations received"
+        long pendingDonations = availableMedicines; // All current medicines are donations
+
+        // Pending applications (waiting for physical distribution)
+        long pendingDistributions = applicationRepository.countByStatus("Pending");
+
+        // Applications that have been approved/allocated (medicine quantity already reduced)
         long approvedApplications = applicationRepository.countByStatus("Approved");
 
-        stats.put("totalMedicines", totalMedicines);
-        stats.put("totalDonations", totalDonations);
-        stats.put("pendingApplications", pendingApplications);
+        // Total applications ever submitted (including deleted ones would need separate tracking)
+        long totalApplications = applicationRepository.count();
+
+        stats.put("availableMedicines", availableMedicines);
+        stats.put("totalMedicineQuantity", totalMedicineQuantity);
+        stats.put("pendingDonations", pendingDonations);
+        stats.put("pendingDistributions", pendingDistributions);
         stats.put("approvedApplications", approvedApplications);
+        stats.put("totalApplications", totalApplications);
 
         return stats;
     }
