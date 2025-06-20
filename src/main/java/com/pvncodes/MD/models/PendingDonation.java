@@ -9,7 +9,6 @@ import java.time.LocalDate;
 
 @Entity
 public class PendingDonation {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -21,20 +20,12 @@ public class PendingDonation {
     private int quantity;
     private String address;
 
-    public PendingDonation() {
-    }
+    // NEW: Verification code
+    private String verificationCode;
 
-    public PendingDonation(Long id, String name, String manufacturer, LocalDate expiryDate, String description, int quantity, String address) {
-        this.id = id;
-        this.name = name;
-        this.manufacturer = manufacturer;
-        this.expiryDate = expiryDate;
-        this.description = description;
-        this.quantity = quantity;
-        this.address = address;
-    }
+    public PendingDonation() {}
 
-    // Getters and Setters
+    // Getters & Setters...
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -56,16 +47,6 @@ public class PendingDonation {
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
 
-    private boolean approved = false;
-
-    public boolean isApproved() {
-        return approved;
-    }
-
-    public void setApproved(boolean approved) {
-        this.approved = approved;
-    }
-
+    public String getVerificationCode() { return verificationCode; }
+    public void setVerificationCode(String verificationCode) { this.verificationCode = verificationCode; }
 }
-
-

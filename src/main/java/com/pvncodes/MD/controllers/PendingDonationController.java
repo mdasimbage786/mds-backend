@@ -23,10 +23,15 @@ public class PendingDonationController {
     @Autowired
     private MedicineService medicineService;
 
-
+    // Create with a verification code
     @PostMapping
     public ResponseEntity<PendingDonation> create(@RequestBody PendingDonation donation) {
-        return new ResponseEntity<>(pendingDonationService.save(donation), HttpStatus.CREATED);
+        // Generate 4-digit code
+        String code = String.format("%04d", (int)(Math.random() * 10000));
+        donation.setVerificationCode(code);
+
+        PendingDonation saved = pendingDonationService.save(donation);
+        return new ResponseEntity<>(saved, HttpStatus.CREATED);
     }
 
     @GetMapping
@@ -34,16 +39,11 @@ public class PendingDonationController {
         return pendingDonationService.getAll();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<PendingDonation> getById(@PathVariable Long id) {
-        Optional<PendingDonation> donation = pendingDonationService.getById(id);
-        return donation.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
-    // ✅ FIXED: This method now matches the frontend's request URL
     @PutMapping("/{id}/approve")
-    public ResponseEntity<?> approveDonation(@PathVariable Long id) {
+    public ResponseEntity<?> approveDonation(
+            @PathVariable Long id,
+            @RequestParam String code) {
+
         Optional<PendingDonation> optionalDonation = pendingDonationService.getById(id);
         if (!optionalDonation.isPresent()) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -51,25 +51,24 @@ public class PendingDonationController {
 
         PendingDonation donation = optionalDonation.get();
 
-        // Convert to Medicine entity (you must create a constructor or builder for this)
-        Medicine medicine = new Medicine();
-        medicine.setName(donation.getName());
-        medicine.setManufacturer(donation.getManufacturer());
-        medicine.setExpiryDate(donation.getExpiryDate());
-        medicine.setDescription(donation.getDescription());
-        medicine.setQuantity(donation.getQuantity());
-        medicine.setAddress(donation.getAddress());
+        if (!donation.getVerificationCode().equals(code)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Invalid verification code");
+        }
 
-        // Save to Medicine table
-        medicineService.saveMedicine(medicine);
+        Medicine med = new Medicine();
+        med.setName(donation.getName());
+        med.setManufacturer(donation.getManufacturer());
+        med.setExpiryDate(donation.getExpiryDate());
+        med.setDescription(donation.getDescription());
+        med.setQuantity(donation.getQuantity());
+        med.setAddress(donation.getAddress());
 
-
-        // Delete from pending donations
+        medicineService.saveMedicine(med);
         pendingDonationService.deleteById(id);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
-
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
