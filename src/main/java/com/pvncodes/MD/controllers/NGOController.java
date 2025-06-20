@@ -36,11 +36,15 @@ public class NGOController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Incorrect password");
         }
 
+        if (ngo.getNgoId() != null && !ngo.getNgoId().equals(dbNgo.getNgoId())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid NGO ID");
+        }
+
         String token = "ngo-token-" + dbNgo.getId();
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
-        response.put("ngoId", dbNgo.getId());
+        response.put("ngoId", dbNgo.getNgoId());
         response.put("name", dbNgo.getName());
         response.put("email", dbNgo.getEmail());
         response.put("address", dbNgo.getAddress());
