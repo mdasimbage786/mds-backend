@@ -56,6 +56,11 @@ public class ApplicationService {
         return applicationRepository.save(application);
     }
 
+    // Method to get application by ID
+    public Optional<Application> getById(Long id) {
+        return applicationRepository.findById(id);
+    }
+
     // Method to approve an application (change status from Pending to Approved)
     public Application approveApplication(Long id) throws IllegalArgumentException {
         Optional<Application> optionalApplication = applicationRepository.findById(id);
@@ -66,6 +71,60 @@ public class ApplicationService {
         Application application = optionalApplication.get();
         application.setStatus("Approved");
         return applicationRepository.save(application);
+    }
+
+    // Method to reject an application (change status from Pending to Rejected)
+    public Application rejectApplication(Long id) throws IllegalArgumentException {
+        Optional<Application> optionalApplication = applicationRepository.findById(id);
+        if (optionalApplication.isEmpty()) {
+            throw new IllegalArgumentException("Application not found.");
+        }
+
+        Application application = optionalApplication.get();
+        
+        // Restore medicine quantity when application is rejected
+        restoreMedicineQuantity(application);
+        
+        application.setStatus("Rejected");
+        return applicationRepository.save(application);
+    }
+
+    // Helper method to restore medicine quantity
+    private void restoreMedicineQuantity(Application application) {
+        try {
+            // Find existing medicine by name
+            Optional<Medicine> optionalMedicine = medicineRepository.findAll()
+                    .stream()
+                    .filter(m -> m.getName().equals(application.getSelectedMedicine()))
+                    .findFirst();
+
+            if (optionalMedicine.isPresent()) {
+                // Medicine exists, restore quantity
+                Medicine medicine = optionalMedicine.get();
+                medicine.setQuantity(medicine.getQuantity() + application.getQuantity());
+                medicineRepository.save(medicine);
+                System.out.println("Restored " + application.getQuantity() + " units of " + 
+                                 application.getSelectedMedicine() + " due to application rejection.");
+            } else {
+                // Medicine doesn't exist (was deleted when quantity reached 0)
+                // Create new medicine entry with the rejected quantity
+                Medicine newMedicine = new Medicine();
+                newMedicine.setName(application.getSelectedMedicine());
+                newMedicine.setQuantity(application.getQuantity());
+                // Set default values for required fields
+                newMedicine.setManufacturer("Unknown");
+                newMedicine.setDescription("Restored from rejected application");
+                newMedicine.setAddress("Contact admin for details");
+                // You might want to set a default expiry date or handle this differently
+                medicineRepository.save(newMedicine);
+                System.out.println("Created new medicine entry for " + application.getSelectedMedicine() + 
+                                 " with quantity " + application.getQuantity() + " due to application rejection.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error restoring medicine quantity for application " + application.getId() + 
+                             ": " + e.getMessage());
+            // Log error but don't throw exception to avoid blocking the rejection process
+        }
     }
 
     // Method to mark application as distributed and delete it
@@ -109,5 +168,9 @@ public class ApplicationService {
 
     public List<Application> getApprovedApplications() {
         return applicationRepository.findByStatus("Approved");
+    }
+
+    public List<Application> getRejectedApplications() {
+        return applicationRepository.findByStatus("Rejected");
     }
 }
