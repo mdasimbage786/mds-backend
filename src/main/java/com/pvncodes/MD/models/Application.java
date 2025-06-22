@@ -4,6 +4,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Column;
 
 @Entity
 public class Application {
@@ -18,6 +19,13 @@ public class Application {
     private String name;
     private String mobile;
     private String address;
+    
+    @Column(nullable = false)
+    private String status = "Pending";
+    
+    // Verification code field
+    @Column(name = "verification_code", length = 10)
+    private String verificationCode;
 
     // Constructors
     public Application() {
@@ -90,8 +98,6 @@ public class Application {
         this.address = address;
     }
 
-    private String status = "Pending";
-
     public String getStatus() {
         return status;
     }
@@ -100,4 +106,26 @@ public class Application {
         this.status = status;
     }
 
+    public String getVerificationCode() {
+        return verificationCode;
+    }
+
+    public void setVerificationCode(String verificationCode) {
+        this.verificationCode = verificationCode;
+    }
+
+    @Override
+    public String toString() {
+        return "Application{" +
+                "id=" + id +
+                ", selectedMedicine='" + selectedMedicine + '\'' +
+                ", quantity=" + quantity +
+                ", ngo='" + ngo + '\'' +
+                ", name='" + name + '\'' +
+                ", mobile='" + mobile + '\'' +
+                ", address='" + address + '\'' +
+                ", status='" + status + '\'' +
+                ", verificationCode='" + verificationCode + '\'' +
+                '}';
+    }
 }
