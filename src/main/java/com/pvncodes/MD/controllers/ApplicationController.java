@@ -142,13 +142,27 @@ public class ApplicationController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteApplication(@PathVariable Long id) {
-        try {
-            applicationService.deleteById(id);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } catch (Exception e) {
-            System.err.println("Error deleting application: " + e.getMessage());
-            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+public ResponseEntity<?> deleteApplication(
+        @PathVariable Long id,
+        @RequestParam String code) {
+    try {
+        Optional<Application> optionalApplication = applicationService.getById(id);
+        if (!optionalApplication.isPresent()) {
+            return new ResponseEntity<>("Application not found", HttpStatus.NOT_FOUND);
         }
+
+        Application application = optionalApplication.get();
+
+        if (!application.getVerificationCode().equals(code)) {
+            return new ResponseEntity<>("Invalid verification code", HttpStatus.FORBIDDEN);
+        }
+
+        applicationService.deleteById(id);
+        return new ResponseEntity<>("Application deleted successfully", HttpStatus.OK);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return new ResponseEntity<>("Failed to delete application", HttpStatus.INTERNAL_SERVER_ERROR);
     }
-                }
+}
+}
