@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.pvncodes.MD.security.JwtService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.Map;
 
 import java.util.List;
@@ -18,17 +21,29 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
     @PostMapping("/register")
     public ResponseEntity<User> registerUser(@RequestBody User user) {
+        if (user.getPassword() == null || user.getPassword().length() < 6) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        if (user.getEmail() != null && userService.findByEmail(user.getEmail()).isPresent()) {
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return new ResponseEntity<>(userService.saveUser(user), HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody User user) {
         Optional<User> foundUser = userService.findByEmail(user.getEmail());
-        if (foundUser.isPresent() && foundUser.get().getPassword().equals(user.getPassword())) {
-            // Include user ID in token for easier extraction
-            String token = "fake-jwt-token-" + foundUser.get().getId();
+        if (foundUser.isPresent() && user.getPassword() != null && passwordMatches(foundUser.get(), user.getPassword())) {
+            String token = jwtService.generateToken(foundUser.get().getId(), "USER");
             return ResponseEntity.ok().body(
                     Map.of(
                             "token", token,
@@ -44,14 +59,9 @@ public class UserController {
 
     // New endpoint for getting user profile
     @GetMapping("/profile")
-    public ResponseEntity<User> getUserProfile(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<User> getUserProfile(Authentication authentication) {
         try {
-            // Extract token from "Bearer token" format
-            String token = authHeader.replace("Bearer ", "");
-
-            // Extract user ID from token (assuming format: fake-jwt-token-{userId})
-            String userIdStr = token.replace("fake-jwt-token-", "");
-            Long userId = Long.parseLong(userIdStr);
+            Long userId = (Long) authentication.getPrincipal();
 
             Optional<User> user = userService.findById(userId);
             if (user.isPresent()) {
@@ -68,11 +78,9 @@ public class UserController {
 
     // New endpoint for updating user profile
     @PutMapping("/profile")
-    public ResponseEntity<User> updateUserProfile(@RequestHeader("Authorization") String authHeader, @RequestBody User updatedUser) {
+    public ResponseEntity<User> updateUserProfile(Authentication authentication, @RequestBody User updatedUser) {
         try {
-            String token = authHeader.replace("Bearer ", "");
-            String userIdStr = token.replace("fake-jwt-token-", "");
-            Long userId = Long.parseLong(userIdStr);
+            Long userId = (Long) authentication.getPrincipal();
 
             Optional<User> existingUser = userService.findById(userId);
             if (existingUser.isPresent()) {
@@ -113,5 +121,20 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    /** BCrypt check; transparently upgrades legacy plaintext passwords to BCrypt on first successful login. */
+    private boolean passwordMatches(User stored, String raw) {
+        String saved = stored.getPassword();
+        if (saved == null) return false;
+        if (saved.startsWith("$2")) {
+            return passwordEncoder.matches(raw, saved);
+        }
+        if (saved.equals(raw)) {
+            stored.setPassword(passwordEncoder.encode(raw));
+            userService.saveUser(stored);
+            return true;
+        }
+        return false;
     }
 }

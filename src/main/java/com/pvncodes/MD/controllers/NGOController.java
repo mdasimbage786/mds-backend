@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.pvncodes.MD.security.JwtService;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import java.util.*;
 
 @RestController
@@ -17,8 +21,21 @@ public class NGOController {
     @Autowired
     private NGOService ngoService;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
     @PostMapping("/register")
     public ResponseEntity<NGO> registerNGO(@RequestBody NGO ngo) {
+        if (ngo.getPassword() == null || ngo.getPassword().length() < 6) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        if (ngo.getEmail() != null && ngoService.findByEmail(ngo.getEmail()).isPresent()) {
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
+        }
+        ngo.setPassword(passwordEncoder.encode(ngo.getPassword()));
         return new ResponseEntity<>(ngoService.saveNGO(ngo), HttpStatus.CREATED);
     }
 
@@ -32,7 +49,7 @@ public class NGOController {
 
         NGO dbNgo = foundNGO.get();
 
-        if (!dbNgo.getPassword().equals(ngo.getPassword())) {
+        if (ngo.getPassword() == null || !passwordMatches(dbNgo, ngo.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Incorrect password");
         }
 
@@ -40,7 +57,7 @@ public class NGOController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid NGO ID");
         }
 
-        String token = "ngo-token-" + dbNgo.getId();
+        String token = jwtService.generateToken(dbNgo.getId(), "NGO");
 
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
@@ -55,11 +72,9 @@ public class NGOController {
 
     // New endpoint for getting NGO profile
     @GetMapping("/profile")
-    public ResponseEntity<NGO> getNGOProfile(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<NGO> getNGOProfile(Authentication authentication) {
         try {
-            String token = authHeader.replace("Bearer ", "");
-            String ngoIdStr = token.replace("ngo-token-", "");
-            Long ngoId = Long.parseLong(ngoIdStr);
+            Long ngoId = (Long) authentication.getPrincipal();
 
             Optional<NGO> ngo = ngoService.findById(ngoId);
             if (ngo.isPresent()) {
@@ -75,11 +90,9 @@ public class NGOController {
 
     // New endpoint for updating NGO profile
     @PutMapping("/profile")
-    public ResponseEntity<NGO> updateNGOProfile(@RequestHeader("Authorization") String authHeader, @RequestBody NGO updatedNGO) {
+    public ResponseEntity<NGO> updateNGOProfile(Authentication authentication, @RequestBody NGO updatedNGO) {
         try {
-            String token = authHeader.replace("Bearer ", "");
-            String ngoIdStr = token.replace("ngo-token-", "");
-            Long ngoId = Long.parseLong(ngoIdStr);
+            Long ngoId = (Long) authentication.getPrincipal();
 
             Optional<NGO> existingNGO = ngoService.findById(ngoId);
             if (existingNGO.isPresent()) {
@@ -118,5 +131,20 @@ public class NGOController {
     public ResponseEntity<Void> deleteNGO(@PathVariable Long id) {
         ngoService.deleteNGO(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    /** BCrypt check; transparently upgrades legacy plaintext passwords to BCrypt on first successful login. */
+    private boolean passwordMatches(NGO stored, String raw) {
+        String saved = stored.getPassword();
+        if (saved == null) return false;
+        if (saved.startsWith("$2")) {
+            return passwordEncoder.matches(raw, saved);
+        }
+        if (saved.equals(raw)) {
+            stored.setPassword(passwordEncoder.encode(raw));
+            ngoService.saveNGO(stored);
+            return true;
+        }
+        return false;
     }
 }

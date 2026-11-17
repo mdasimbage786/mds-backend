@@ -1,5 +1,6 @@
 package com.pvncodes.MD.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 @Entity
@@ -12,6 +13,7 @@ public class NGO {
     private String ngoId;
     private String name;
     private String email;
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
     private String address;
     private String contactNumber;
