@@ -140,9 +140,9 @@ The Medicine Donation System Backend is a RESTful API service built with Spring 
    spring.jpa.show-sql=true
    spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
    
-   # JWT Configuration
-   jwt.secret=your-secret-key-min-256-bits
-   jwt.expiration=86400000
+   # JWT Configuration (set via environment variables; do not commit secrets)
+   # export JWT_SECRET=<random string, 32+ chars>
+   # export JWT_EXPIRATION_MS=86400000   (optional, default 24h)
    
    # Server Configuration
    server.port=8080
